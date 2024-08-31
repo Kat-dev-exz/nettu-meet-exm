@@ -52,9 +52,7 @@ pipeline {
         
         stage('Container sec') {
             agent {
-                dockerContainer {
-                    image 'docker:latest'
-                }
+                label 'alpine'
             }
 
             steps {
