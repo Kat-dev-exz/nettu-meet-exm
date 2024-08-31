@@ -1,7 +1,8 @@
 pipeline {
     agent any
     environment {
-         MAX_ERROR="5"
+         SEMGREP_REPORT_MAX_ERROR="5"
+         ZAPSH_REPORT_MAX_ERROR="5"
      }
     stages{  
         stage('SAST'){
@@ -128,8 +129,10 @@ pipeline {
 
                     echo "ZAP total error with risk 3 (High): ${zapErrorCount}"
 
-                    if (zapErrorCount > env.MAX_ERROR.toInteger()) {
+                    if (zapErrorCount > env.SEMGREP_REPORT_MAX_ERROR.toInteger()) {
                         echo "ZAP QG failed."
+                        //для отладки не блочим
+                        //error("ZAP QG failed.")
                     }
 
                     def jsonText = readFile env.SEMGREP_REPORT
@@ -141,10 +144,31 @@ pipeline {
                         }
                     }
                     echo "SEMGREP error count: ${errorCount}"
-                    if (errorCount > env.MAX_ERROR.toInteger()) {
+                    if (errorCount > env.SEMGREP_REPORT_MAX_ERROR.toInteger()) {
                         echo "SEMGREP QG failed."
+                        //для отладки не блочим
+                        //error("SEMGREP QG failed.")
                     }
                 }
+            }
+        }
+        
+        stage('SendToDodjo') {
+            agent {
+                label 'alpine'
+            }
+            steps {
+                unstash 'semgrep-report'
+                unstash 'zapsh-report'
+
+                sh '''
+                    apk update && apk add --no-cache python3 py3-pip py3-virtualenv
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install requests
+                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} semgrep-report.json "Semgrep JSON Report"
+                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} zapsh-report.xml "ZAP Scan"
+                '''
             }
         }
         
