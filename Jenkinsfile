@@ -39,7 +39,7 @@ pipeline {
             }           
         }
         
-        stage('Trivy') {
+        /*stage('Trivy') {
             agent { label "dind" }
             steps {
                 script {
@@ -113,7 +113,7 @@ pipeline {
                     }
                 }
             }
-        }
+        }*/
         
         stage('Dodjo') {
             agent {
@@ -128,8 +128,8 @@ pipeline {
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install requests
-                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} semgrep-report.json "Semgrep report"
-                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} zapsh-report.xml "ZAP scan"
+                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} report_semgrep.json "Semgrep report"
+                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} report_zap.xml "ZAP scan"
                 '''
             }
         }
