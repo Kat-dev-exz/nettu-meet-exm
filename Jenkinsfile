@@ -12,7 +12,7 @@ pipeline {
                 archiveArtifacts artifacts: 'report_semgrep.json', allowEmptyArchive: true
             }
         }
-        stage('container sec'){
+        /*stage('container sec'){
             agent {
                 label 'dind'
             }
@@ -21,6 +21,27 @@ pipeline {
                 docker run -v ./report:/report aquasec/trivy repo https://github.com/Kat-dev-exz/nettu-meet-exm -f json -o /report/report_trivy.json
                 '''
                 archiveArtifacts artifacts: 'report/report_trivy.json', allowEmptyArchive: true
+            }
+        }*/
+         stage('container sec') {
+            agent {
+                label 'dind'
+            }
+
+            steps {
+                sh '''
+                    cd server
+                    docker login -u mummytroll777 -p 7087Taek7
+                    docker build . -t Kat-dev-exz/nettu-meet-exm:latest -f Dockerfile
+                    docker image ls
+                    sudo apt-get install -y curl
+                    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+                    ./bin/trivy image --format cyclonedx --output /home/jenkins/workspace/kat/sbom.json Kat-dev-exz/nettu-meet-exm:latest
+                    cd /home/jenkins/workspace/kat/
+                    ls -lt                    
+                '''
+                stash name: 'sbom', includes: 'sbom.json'
+                archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
             }
         }
         stage('DAST'){
