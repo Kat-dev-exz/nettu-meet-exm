@@ -34,7 +34,7 @@ pipeline {
                 archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
             }
         }*/
-        stage('DAST') {
+        /*stage('DAST') {
             agent {
                 label 'alpine'
             }    
@@ -48,9 +48,9 @@ pipeline {
                 stash name: 'zapsh-report', includes: 'zapsh-report.xml'
                 archiveArtifacts artifacts: 'zapsh-report.xml', allowEmptyArchive: true         
             }           
-        }
+        }*/
         
-        stage('C_S') {
+        stage('Container sec') {
             agent {
                 label 'dind'
             }
@@ -71,6 +71,42 @@ pipeline {
                 archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
             }
         }
+
+        stage('SCA_DepTrack') {
+            agent {
+                label 'alpine'
+            }
+
+            steps {
+                unstash 'sbom'
+
+                sh '''
+                    echo ${WORKSPACE}                    
+                    ls -lt           
+                    apk update && apk add --no-cache jq
+                    response=$(curl -k -s -X PUT "https://s410-exam.cyber-ed.space:8081/api/v1/project" \
+                        -H "X-Api-Key: odt_SfCq7Csub3peq7Y6lSlQy5Ngp9sSYpJl" \
+                        -H "Content-Type: application/json" \
+                        -d '{
+                            "name": "kat",
+                            "version": "1.0.0"
+                        }')
+
+                    uuid=$(echo $response | jq -r '.uuid')
+                    echo "Project UUID: $uuid"
+                    sbomresponse=$(curl -k -o /dev/null -s -w "%{http_code}" -X POST  "https://s410-exam.cyber-ed.space:8081/api/v1/bom" \
+                        -H 'Content-Type: multipart/form-data; boundary=__X_BOM__' \
+                        -H "X-API-Key: odt_SfCq7Csub3peq7Y6lSlQy5Ngp9sSYpJl" \
+                        -F "bom=@sbom.json" -F "project=${uuid}")
+                    echo "Result: $sbomresponse"
+                    if [ "$sbomresponse" -ne "200" ]; then
+                        echo "Error: Failed to upload SBOM"
+                        exit 1
+                    fi
+                    ls -lt                                        
+                '''
+            }
+        } 
         
     }
     post {
