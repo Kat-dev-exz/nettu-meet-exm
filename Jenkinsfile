@@ -18,7 +18,7 @@ pipeline {
                 pipx install semgrep; pipx ensurepath; source ~/.bashrc
                 /root/.local/bin/semgrep scan --config auto --json > report_semgrep.json
                 '''
-                stash name: 'semgrep-report', includes: 'report_semgrep.json'
+                stash name: 'report_semgrep', includes: 'report_semgrep.json'
                 archiveArtifacts artifacts: 'report_semgrep.json', allowEmptyArchive: true
             }
         }
@@ -39,61 +39,46 @@ pipeline {
             }           
         }
         
-        /*stage('Container sec') {
-            agent {
-                label 'alpine'
-            }
+        stage('Trivy') {
+            agent { label "dind" }
             steps {
-                sh '''
+                script {
+                    sh '''
+                    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+                    echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+                    sudo apt update
+                    sudo apt install -y trivy
+                    mkdir -p reports
                     cd server
-                    docker login -u mummytroll777 -p 7087Taek7
-                    docker build . -t Kat-dev-exz/nettu-meet-exm:latest -f Dockerfile
-                    docker image ls
-                    sudo apt-get install -y curl
-                    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-                    ./bin/trivy image --format cyclonedx --output ${WORKSPACE}/sbom.json Kat-dev-exz/nettu-meet-exm:latest
-                    cd ${WORKSPACE}
-                    ls -lt                    
-                '''
-                stash name: 'sbom', includes: 'sbom.json'
-                archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
+                    trivy fs --format cyclonedx -o ../reports/sbom.json package-lock.json
+                    trivy sbom -f json -o ../reports/trivy.json ../reports/sbom.json
+                    '''
+                    archiveArtifacts artifacts: 'reports/*', allowEmptyArchive: true
+                    stash includes: 'reports/sbom.json', name: 'sbom'
+                    stash includes: 'reports/trivy.json', name: 'trivy-report'
+                }
             }
         }
-
-        stage('SCA_DepTrack') {
-            agent {
-                label 'alpine'
-            }
-
+        stage('Dep_Track') {
+            agent { label "dind" }
             steps {
                 unstash 'sbom'
-
-                sh '''
-                    echo ${WORKSPACE}                    
-                    ls -lt           
-                    apk update && apk add --no-cache jq
-                    response=$(curl -k -s -X PUT "https://s410-exam.cyber-ed.space:8081/api/v1/project" \
-                        -H "X-Api-Key: odt_SfCq7Csub3peq7Y6lSlQy5Ngp9sSYpJl" \
-                        -H "Content-Type: application/json" \
-                        -d '{
-                            "name": "kat",
-                            "version": "1.0.0"
-                        }')
-                    uuid=$(echo $response | jq -r '.uuid')
-                    echo "Project UUID: $uuid"
-                    sbomresponse=$(curl -k -o /dev/null -s -w "%{http_code}" -X POST  "https://s410-exam.cyber-ed.space:8081/api/v1/bom" \
-                        -H 'Content-Type: multipart/form-data; boundary=__X_BOM__' \
-                        -H "X-API-Key: odt_SfCq7Csub3peq7Y6lSlQy5Ngp9sSYpJl" \
-                        -F "bom=@sbom.json" -F "project=${uuid}")
-                    echo "Result: $sbomresponse"
-                    if [ "$sbomresponse" -ne "200" ]; then
-                        echo "Error: Failed to upload SBOM"
-                        exit 1
-                    fi
-                    ls -lt                                        
-                '''
+                script {
+                    sh '''
+                    ls -l reports/sbom.json
+                    response_code=$(curl -v -k --silent --output /dev/null --write-out "%{http_code}" \
+                    -X POST "https://s410-exam.cyber-ed.space:8081/api/v1/bom" \
+                    -H "Content-Type: multipart/form-data" \
+                    -H "X-Api-Key: odt_SfCq7Csub3peq7Y6lSlQy5Ngp9sSYpJl" \
+                    -F "autoCreate=true" \
+                    -F "projectName=kat2" \
+                    -F "projectVersion=1.0" \
+                    -F "bom=@reports/sbom.json")
+                    echo "Response Code: $response_code"
+                    '''
+                }
             }
-        }*/
+        }
 
         stage('Qualtity gates') {
             agent {
