@@ -50,8 +50,8 @@ pipeline {
                     archiveArtifacts artifacts: 'payload.json', allowEmptyArchive: true
                 }
             }
-        }
-    }*/
+        }*/
+    }
     post {
         always {
             echo 'Pipeline end.'
@@ -63,5 +63,4 @@ pipeline {
             echo 'Pipeline failure ;('
         }
     }
-}
 }
