@@ -54,7 +54,6 @@ pipeline {
             agent {
                 dockerContainer {
                     image 'docker:latest'
-                    args '-u root'
                 }
             }
 
