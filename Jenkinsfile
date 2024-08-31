@@ -45,7 +45,6 @@ pipeline {
                 sh 'ls -lt'            
                 sh './ZAP_2.15.0/zap.sh -cmd -quickurl https://s410-exam.cyber-ed.space:8082 -quickout $(pwd)/zapsh-report.zml'
                 sh 'ls -lt'
-                sh 'cat ./zapsh-report.xml'
                 stash name: 'zapsh-report', includes: 'zapsh-report.xml'
                 archiveArtifacts artifacts: 'zapsh-report.xml', allowEmptyArchive: true         
             }            
