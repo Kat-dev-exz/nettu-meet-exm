@@ -2,13 +2,15 @@ pipeline {
     agent any
     environment {
          DODJO_URL="https://s410-exam.cyber-ed.space:8083/api/v2/import-scan/"
-         DODJO_TOKEN="c5b50032ffd2e0aa02e2ff56ac23f0e350af75b4" 
-         SEMGREP_REPORT_MAX_ERROR="5"
-         ZAPSH_REPORT_MAX_ERROR="5"
+         DODJO_TOKEN="c5b50032ffd2e0aa02e2ff56ac23f0e350af75b4"
+         SEMGREP_REPORT = 'report_semgrep.json'
+         SEMGREP_MAX_ERROR="5"
+         ZAP_MAX_ERROR="5"
+        
      }
     
     stages{  
-        stage('SAST'){
+        stage('SAST') {
             steps{
                 sh '''
                 apk add python3
@@ -21,26 +23,6 @@ pipeline {
             }
         }
         
-        /*stage('container sec') {
-            agent {
-                label 'dind'
-            }
-            steps {
-                sh '''
-                    cd server
-                    docker login -u mummytroll777 -p 7087Taek7
-                    docker build . -t Kat-dev-exz/nettu-meet-exm:latest -f Dockerfile
-                    docker image ls
-                    sudo apt-get install -y curl
-                    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
-                    ./bin/trivy image --format cyclonedx --output ${WORKSPACE}/sbom.json Kat-dev-exz/nettu-meet-exm:latest
-                    cd ${WORKSPACE}
-                    ls -lt                    
-                '''
-                stash name: 'sbom', includes: 'sbom.json'
-                archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
-            }
-        }*/
         stage('DAST') {
             agent {
                 label 'alpine'
@@ -50,10 +32,10 @@ pipeline {
                 sh 'tar -xzf ZAP_2.15.0_Linux.tar.gz'
                 sh './ZAP_2.15.0/zap.sh -cmd -addonupdate -addoninstall wappalyzer -addoninstall pscanrulesBeta'
                 sh 'ls -lt'            
-                sh './ZAP_2.15.0/zap.sh -cmd -quickurl https://s410-exam.cyber-ed.space:8082 -quickout $(pwd)/zapsh-report.xml'
+                sh './ZAP_2.15.0/zap.sh -cmd -quickurl https://s410-exam.cyber-ed.space:8082 -quickout $(pwd)/report_zap.xml'
                 sh 'ls -lt'
-                stash name: 'zapsh-report', includes: 'zapsh-report.xml'
-                archiveArtifacts artifacts: 'zapsh-report.xml', allowEmptyArchive: true         
+                stash name: 'report_zap', includes: 'report_zap.xml'
+                archiveArtifacts artifacts: 'report_zap.xml', allowEmptyArchive: true         
             }           
         }
         
@@ -97,7 +79,6 @@ pipeline {
                             "name": "kat",
                             "version": "1.0.0"
                         }')
-
                     uuid=$(echo $response | jq -r '.uuid')
                     echo "Project UUID: $uuid"
                     sbomresponse=$(curl -k -o /dev/null -s -w "%{http_code}" -X POST  "https://s410-exam.cyber-ed.space:8081/api/v1/bom" \
@@ -114,30 +95,25 @@ pipeline {
             }
         }*/
 
-        stage('QualtityGates') {
+        stage('Qualtity gates') {
             agent {
                 label 'alpine'
             }
 
             steps {
-                unstash 'semgrep-report'
-                unstash 'zapsh-report'
+                unstash 'report_semgrep'
+                unstash 'report_zap'
 
                 script {
-                    def xmlFileContent = readFile 'zapsh-report.xml'
+                    def xmlFileContent = readFile 'report_zap.xml'
                     //<riskdesc>High (Low)</riskdesc>
                     def searchString = "<riskcode>3</riskcode>"
                     def lines = xmlFileContent.split('\n')
                     int zapErrorCount = lines.count { line -> line.contains(searchString) }
-
-                    echo "ZAP total error with risk 3 (High): ${zapErrorCount}"
-
-                    if (zapErrorCount > env.SEMGREP_REPORT_MAX_ERROR.toInteger()) {
-                        echo "ZAP QG failed."
-                        //для отладки не блочим
-                        //error("ZAP QG failed.")
+                    echo "ZAP total error with risk 3 High: ${zapErrorCount}"
+                    if (zapErrorCount > env.SEMGREP_MAX_ERROR.toInteger()) {
+                        echo "ZAP QG failed"
                     }
-
                     def jsonText = readFile env.SEMGREP_REPORT
                     def json = new groovy.json.JsonSlurper().parseText(jsonText)
                     int errorCount = 0
@@ -147,30 +123,28 @@ pipeline {
                         }
                     }
                     echo "SEMGREP error count: ${errorCount}"
-                    if (errorCount > env.SEMGREP_REPORT_MAX_ERROR.toInteger()) {
-                        echo "SEMGREP QG failed."
-                        //для отладки не блочим
-                        //error("SEMGREP QG failed.")
+                    if (errorCount > env.SEMGREP_MAX_ERROR.toInteger()) {
+                        echo "SEMGREP QG failed"
                     }
                 }
             }
         }
         
-        stage('SendToDodjo') {
+        stage('Dodjo') {
             agent {
                 label 'alpine'
             }
             steps {
-                unstash 'semgrep-report'
-                unstash 'zapsh-report'
+                unstash 'report_semgrep'
+                unstash 'report_zap'
 
                 sh '''
                     apk update && apk add --no-cache python3 py3-pip py3-virtualenv
                     python3 -m venv venv
                     . venv/bin/activate
                     pip install requests
-                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} semgrep-report.json "Semgrep JSON Report"
-                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} zapsh-report.xml "ZAP Scan"
+                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} semgrep-report.json "Semgrep report"
+                    python -m dodjo ${DODJO_URL} ${DODJO_TOKEN} zapsh-report.xml "ZAP scan"
                 '''
             }
         }
