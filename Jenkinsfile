@@ -12,18 +12,18 @@ pipeline {
                 archiveArtifacts artifacts: 'report_semgrep.json', allowEmptyArchive: true
             }
         }
-        /*stage('container sec'){
+        stage('container sec'){
             agent {
                 label 'dind'
             }
             steps{
                 sh '''
-                docker run -v ./report:/report aquasec/trivy repo https://github.com/Kat-dev-exz/nettu-meet-exm -f json -o /report/report_trivy.json
+                docker run -v ./report:/report aquasec/trivy repo https://github.com/Kat-dev-exz/nettu-meet-exm -f json -o /report/trivy.json
                 '''
-                archiveArtifacts artifacts: 'report/report_trivy.json', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'report/trivy.json', allowEmptyArchive: true
             }
-        }*/
-         stage('container sec') {
+        }
+         /*stage('container sec') {
             agent {
                 label 'dind'
             }
@@ -43,7 +43,7 @@ pipeline {
                 stash name: 'sbom', includes: 'sbom.json'
                 archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
             }
-        }
+        }*/
         stage('DAST'){
             agent {
                 label 'dind'
