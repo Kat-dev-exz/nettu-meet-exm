@@ -48,22 +48,30 @@ pipeline {
                 stash name: 'zapsh-report', includes: 'zapsh-report.xml'
                 archiveArtifacts artifacts: 'zapsh-report.xml', allowEmptyArchive: true         
             }           
-        } 
-        stage('SCA'){
+        }
+        
+        stage('C_S') {
+            agent {
+                label 'dind'
+            }
+
             steps {
-                script{
-                    sh '''
-                    curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-                    syft dir:$(pwd) -o cyclonedx-json > payload.json
-                    curl -k -X "PUT" "https://s410-exam.cyber-ed.space:8081/api/v1/bom" \
-                    -H 'Content-Type: application/json'\
-                    -H 'X-API-Key: odt_SfCq7Csub3peq7Y6lSlQy5Ngp9sSYpJl' \
-                    -d @payload.json
-                    '''
-                    archiveArtifacts artifacts: 'payload.json', allowEmptyArchive: true
-                }
+                sh '''
+                    cd server
+                    docker login -u mummytroll777 -p 7087Taek7
+                    docker build . -t Kat-dev-exz/nettu-meet-exm:latest -f Dockerfile
+                    docker image ls
+                    sudo apt-get install -y curl
+                    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh
+                    ./bin/trivy image --format cyclonedx --output ${WORKSPACE}/sbom.json Kat-dev-exz/nettu-meet-exm:latest
+                    cd ${WORKSPACE}
+                    ls -lt                    
+                '''
+                stash name: 'sbom', includes: 'sbom.json'
+                archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
             }
         }
+        
     }
     post {
         always {
