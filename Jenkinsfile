@@ -52,8 +52,9 @@ pipeline {
         
         stage('Container sec') {
             agent {
-                docker {
+                dockerContainer {
                     image 'docker:latest'
+                    args '-u root'
                 }
             }
 
