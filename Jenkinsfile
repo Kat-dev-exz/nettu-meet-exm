@@ -1,7 +1,8 @@
 pipeline {
     agent any
     stages{
-        stage('SAST'){
+        
+        /*stage('SAST'){
             steps{
                 sh '''
                 apk add python3
@@ -11,19 +12,22 @@ pipeline {
                 '''
                 archiveArtifacts artifacts: 'report_semgrep.json', allowEmptyArchive: true
             }
-        }
+        }*/
+        
         /*stage('container sec'){
             agent {
                 label 'dind'
             }
             steps{
                 sh '''
+                cd server
+                docker login -u mummytroll777 -p 7087Taek7
                 docker run -v ./report:/report aquasec/trivy repo https://github.com/Kat-dev-exz/nettu-meet-exm -f json -o /report/trivy.json
                 '''
                 archiveArtifacts artifacts: 'report/trivy.json', allowEmptyArchive: true
             }
         }*/
-         stage('container sec') {
+        /*stage('container sec') {
             agent {
                 label 'dind'
             }
@@ -42,7 +46,7 @@ pipeline {
                 stash name: 'sbom', includes: 'sbom.json'
                 archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
             }
-        }
+        }*/
         stage('DAST'){
             agent {
                 label 'dind'
@@ -56,7 +60,7 @@ pipeline {
                 }
             }
         }
-        /*stage('SCA'){
+        stage('SCA'){
             steps {
                 script{
                     sh '''
@@ -70,7 +74,7 @@ pipeline {
                     archiveArtifacts artifacts: 'payload.json', allowEmptyArchive: true
                 }
             }
-        }*/
+        }
     }
     post {
         always {
