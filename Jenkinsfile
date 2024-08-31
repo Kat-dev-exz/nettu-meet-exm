@@ -52,7 +52,9 @@ pipeline {
         
         stage('Container sec') {
             agent {
-                label 'dind'
+                docker {
+                    image 'docker:latest'
+                }
             }
 
             steps {
