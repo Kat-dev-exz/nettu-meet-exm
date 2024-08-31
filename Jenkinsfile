@@ -14,7 +14,7 @@ pipeline {
             }
         }*/
         
-        stage('container sec') {
+        /*stage('container sec') {
             agent {
                 label 'dind'
             }
@@ -33,20 +33,23 @@ pipeline {
                 stash name: 'sbom', includes: 'sbom.json'
                 archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
             }
-        }
-        stage('DAST'){
+        }*/
+        stage('DAST') {
             agent {
-                label 'dind'
-            }
-            steps{
-                script{
-                    sh '''
-                    docker run -v \$(pwd)/:/zap/wrk/:rw -t zaproxy/zap-stable zap-baseline.py -I -t https://s410-exam.cyber-ed.space:8082 -J report_zap.json  
-                    '''
-                    archiveArtifacts artifacts: 'report_zap.json', allowEmptyArchive: true
-                }
-            }
-        }
+                label 'alpine'
+            }    
+            steps {
+                sh 'curl -L -o ZAP_2.15.0_Linux.tar.gz https://github.com/zaproxy/zaproxy/releases/download/v2.15.0/ZAP_2.15.0_Linux.tar.gz'
+                sh 'tar -xzf ZAP_2.15.0_Linux.tar.gz'
+                sh './ZAP_2.15.0/zap.sh -cmd -addonupdate -addoninstall wappalyzer -addoninstall pscanrulesBeta'
+                sh 'ls -lt'            
+                sh './ZAP_2.15.0/zap.sh -cmd -quickurl https://s410-exam.cyber-ed.space:8082 -quickout $(pwd)/zapsh-report.zml'
+                sh 'ls -lt'
+                sh 'cat ./zapsh-report.xml'
+                stash name: 'zapsh-report', includes: 'zapsh-report.xml'
+                archiveArtifacts artifacts: 'zapsh-report.xml', allowEmptyArchive: true         
+            }            
+        } 
         stage('SCA'){
             steps {
                 script{
