@@ -51,10 +51,7 @@ pipeline {
         }*/
         
         stage('Container sec') {
-            agent {
-                label 'alpine'
-            }
-
+            agent any
             steps {
                 sh '''
                     cd server
