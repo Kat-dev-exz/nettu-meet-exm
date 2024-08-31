@@ -39,7 +39,7 @@ pipeline {
             }           
         }
         
-        /*stage('Trivy') {
+        stage('Trivy') {
             agent { label "dind" }
             steps {
                 script {
@@ -59,6 +59,7 @@ pipeline {
                 }
             }
         }
+        
         stage('Dep_Track') {
             agent { label "dind" }
             steps {
@@ -113,7 +114,7 @@ pipeline {
                     }
                 }
             }
-        }*/
+        }
         
         stage('Dodjo') {
             agent {
@@ -135,6 +136,7 @@ pipeline {
         }
         
     }
+    
     post {
         always {
             echo 'Pipeline end.'
