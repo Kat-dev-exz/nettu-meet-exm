@@ -21,7 +21,7 @@ pipeline {
             steps {
                 sh '''
                     cd server
-                    docker login -u aspodkatilov@gmail.com -p P@ssw0rd!
+                    docker login -u -u mummytroll777 -p 7087Taek7
                     docker build . -t Kat-dev-exz/nettu-meet-exm:latest -f Dockerfile
                     docker image ls
                     sudo apt-get install -y curl
