@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    environment {
+         MAX_ERROR="5"
+     }
     stages{  
         stage('SAST'){
             steps{
@@ -125,7 +128,7 @@ pipeline {
 
                     echo "ZAP total error with risk 3 (High): ${zapErrorCount}"
 
-                    if (zapErrorCount > 5) {
+                    if (zapErrorCount > env.MAX_ERROR.toInteger()) {
                         echo "ZAP QG failed."
                     }
 
@@ -138,7 +141,7 @@ pipeline {
                         }
                     }
                     echo "SEMGREP error count: ${errorCount}"
-                    if (errorCount > 5) {
+                    if (errorCount > env.MAX_ERROR.toInteger()) {
                         echo "SEMGREP QG failed."
                     }
                 }
