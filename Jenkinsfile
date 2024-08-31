@@ -1,9 +1,12 @@
 pipeline {
     agent any
     environment {
+         DODJO_URL="https://s410-exam.cyber-ed.space:8083/api/v2/import-scan/"
+         DODJO_TOKEN="c5b50032ffd2e0aa02e2ff56ac23f0e350af75b4" 
          SEMGREP_REPORT_MAX_ERROR="5"
          ZAPSH_REPORT_MAX_ERROR="5"
      }
+    
     stages{  
         stage('SAST'){
             steps{
