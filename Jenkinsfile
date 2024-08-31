@@ -1,8 +1,7 @@
 pipeline {
     agent any
-    stages{
-        
-        /*stage('SAST'){
+    stages{  
+        stage('SAST'){
             steps{
                 sh '''
                 apk add python3
@@ -10,9 +9,10 @@ pipeline {
                 pipx install semgrep; pipx ensurepath; source ~/.bashrc
                 /root/.local/bin/semgrep scan --config auto --json > report_semgrep.json
                 '''
+                stash name: 'semgrep-report', includes: 'report_semgrep.json'
                 archiveArtifacts artifacts: 'report_semgrep.json', allowEmptyArchive: true
             }
-        }*/
+        }
         
         /*stage('container sec') {
             agent {
@@ -34,7 +34,7 @@ pipeline {
                 archiveArtifacts artifacts: "sbom.json", allowEmptyArchive: true
             }
         }*/
-        /*stage('DAST') {
+        stage('DAST') {
             agent {
                 label 'alpine'
             }    
@@ -48,11 +48,11 @@ pipeline {
                 stash name: 'zapsh-report', includes: 'zapsh-report.xml'
                 archiveArtifacts artifacts: 'zapsh-report.xml', allowEmptyArchive: true         
             }           
-        }*/
+        }
         
-        stage('Container sec') {
+        /*stage('Container sec') {
             agent {
-                label 'dind'
+                label 'alpine'
             }
             steps {
                 sh '''
@@ -105,7 +105,45 @@ pipeline {
                     ls -lt                                        
                 '''
             }
-        } 
+        }*/
+
+        stage('QualtityGates') {
+            agent {
+                label 'alpine'
+            }
+
+            steps {
+                unstash 'semgrep-report'
+                unstash 'zapsh-report'
+
+                script {
+                    def xmlFileContent = readFile 'zapsh-report.xml'
+                    //<riskdesc>High (Low)</riskdesc>
+                    def searchString = "<riskcode>3</riskcode>"
+                    def lines = xmlFileContent.split('\n')
+                    int zapErrorCount = lines.count { line -> line.contains(searchString) }
+
+                    echo "ZAP total error with risk 3 (High): ${zapErrorCount}"
+
+                    if (zapErrorCount > 5) {
+                        echo "ZAP QG failed."
+                    }
+
+                    def jsonText = readFile env.SEMGREP_REPORT
+                    def json = new groovy.json.JsonSlurper().parseText(jsonText)
+                    int errorCount = 0
+                    json.results.each { r ->
+                        if (r.extra.severity == "ERROR") {
+                            errorCount+=1;
+                        }
+                    }
+                    echo "SEMGREP error count: ${errorCount}"
+                    if (errorCount > 5) {
+                        echo "SEMGREP QG failed."
+                    }
+                }
+            }
+        }
         
     }
     post {
