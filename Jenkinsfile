@@ -51,7 +51,9 @@ pipeline {
         }*/
         
         stage('Container sec') {
-            agent any
+            agent {
+                label 'dind'
+            }
             steps {
                 sh '''
                     cd server
